@@ -1,0 +1,23 @@
+{
+    "editor.semanticTokenColorCustomizations": {
+        "[Copilot Theme - Higher Contrast]": {
+            "enabled": true,
+            "rules": {
+                "type": "#9e4ffd",
+                "variable": "#5bb2ff",
+                "function": "#fe16a5",
+                "parameter": "#ffffff",
+            }
+        }
+    },
+    "editor.tokenColorCustomizations": {
+        "[Copilot Theme - Higher Contrast]": {
+            //adadawd
+        },
+    },
+    "workbench.colorCustomizations": {
+        "[Copilot Theme - Higher Contrast]": {
+            "activityBar.background": "#1692fe"
+        },
+    }
+}
