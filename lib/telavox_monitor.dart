@@ -54,9 +54,9 @@ class TelavoxMonitor {
   Future<void> checkForNewCalls() async {
     try {
       final response = await http.get(
-        Uri.parse('${config.baseUrl}/extensions'),
+        Uri.parse('${config.telavoxBaseUrl}/extensions'),
         headers: {
-          'Authorization': 'Bearer ${config.jwtToken}',
+          'Authorization': 'Bearer ${config.telavoxJwtToken}',
           'Accept': 'application/json',
         },
       );
@@ -119,7 +119,7 @@ class TelavoxMonitor {
     if (!_recentCalls.containsKey(number)) return false;
 
     if (DateTime.now().difference(_recentCalls[number]!).inMinutes >=
-        config.exemptionTime) {
+        config.telavoxExemptionTime) {
       _recentCalls.remove(number);
       return false;
     }
@@ -131,7 +131,7 @@ class TelavoxMonitor {
     _eventController.add({TelavoxEvent.statusUpdate: 'Monitoring started'});
     _pollTimer?.cancel();
     _pollTimer = Timer.periodic(
-      Duration(seconds: config.pollInterval),
+      Duration(seconds: config.telavoxPollInterval),
       (_) => checkForNewCalls(),
     );
   }

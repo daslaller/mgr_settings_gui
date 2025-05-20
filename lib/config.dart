@@ -1,22 +1,87 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
+import 'dart:ui';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
+import 'package:flutter/material.dart' as materialdesign;
+import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
 import 'package:window_manager_plus/window_manager_plus.dart';
+import 'package:system_tray/system_tray.dart';
 
 Future<void> main(List<String> args) async {
-  log('Starting application...');
+  log('Starting application debug/sample/standalone application...');
   WidgetsBinding ensureInitialized = WidgetsFlutterBinding.ensureInitialized();
   await WindowManagerPlus.ensureInitialized(
     int.parse(args.lastOrNull ?? '0'),
   ).then((_) {
-    runApp(configWidgetExample);
+    switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
+      case 'settings' || null || '':
+        runApp(
+          FluentApp(
+            home: ConfigScreen(
+              windowOptions: WindowOptions(),
+              windowID: WindowManagerPlus.current.id,
+              key: windowManagerKey,
+            ),
+          ),
+        );
+      default:
+        log('Unsupported argument: ${args.firstOrNull}');
+        runApp(
+          const materialdesign.AlertDialog(
+            title: Text('Error'),
+            content: Text('Unsupported argument'),
+          ),
+        );
+    }
     ensureInitialized.addPostFrameCallback((_) async {
-      await windowManagerKey.currentState!.windowManager(visible: true);
+      log('post frame callback');
+      await windowManagerKey.currentState!.windowManager(
+        window: WindowManagerPlus.current,
+        visible: true,
+      );
+      await initSystemTray();
     });
   });
 }
+
+Future<void> initSystemTray() async {
+  SystemTray systemTray = SystemTray();
+  await systemTray.initSystemTray(
+    title: "system tray",
+    iconPath: 'assets/app_icon.ico',
+  );
+  Menu menu = Menu();
+  await menu.buildFrom(menus);
+  await systemTray.setContextMenu(menu);
+
+  systemTray.registerSystemTrayEventHandler((eventName) {
+    if (eventName.contains(kSystemTrayEventRightClick)) {
+      systemTray.popUpContextMenu();
+    }
+  });
+}
+
+List<MenuItemBase> menus = [
+  MenuItemLabel(
+    label: 'Settings',
+    onClicked: (MenuItemBase item) async {
+      if (!windowManagerKey.currentState!.windowIsAvailable) {
+        log('Creating window');
+        WindowManagerPlus.createWindow([
+          jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
+        ]);
+      } else {
+        log('Window already exists');
+
+        (await windowManagerKey.currentState!.windowIsVisible)
+            ? await windowManagerKey.currentState!.hide()
+            : await windowManagerKey.currentState!.show();
+      }
+    },
+  ),
+];
 
 final GlobalKey<ConfigScreenState> windowManagerKey =
     GlobalKey<ConfigScreenState>();
@@ -44,44 +109,68 @@ class ConfigScreen extends StatefulWidget {
 
 class ConfigScreenState extends State<ConfigScreen> {
   final ConfigService _configService = ConfigService();
-  late TextEditingController _jwtTokenController;
-  late TextEditingController _baseUrlController;
-  late int _pollInterval;
-  late int _exemptionTime;
+  late TextEditingController _telavoxJwtTokenController;
+  late TextEditingController _telavoxBaseUrlController;
+  late int _telavoxPollInterval;
+  late int _telavoxExemptionTime;
   late WindowManagerPlus? window;
+
+  // --- MGR API State Variables ---
+  late TextEditingController _mgrApiKeyController;
+  MgrClient? _mgrClient;
+  Resources? _selectedMgrResource = Resources.inboundCall; // Default selection
+  final TextEditingController _mgrResourceIdController =
+      TextEditingController();
+  String _mgrApiResponseText = '';
+  bool _isLoadingMgrApi = false;
+  // --- End MGR API State ---
   @override
   initState() {
     super.initState();
-    _jwtTokenController = TextEditingController();
-    _baseUrlController = TextEditingController();
-    _pollInterval = 5;
-    _exemptionTime = 2;
+    _telavoxJwtTokenController = TextEditingController();
+    _telavoxBaseUrlController = TextEditingController();
+    _telavoxPollInterval = 5;
+    _telavoxExemptionTime = 2;
+    _mgrApiKeyController = TextEditingController();
     _loadCurrentConfig();
   }
 
   @override
   void dispose() {
-    _jwtTokenController.dispose();
-    _baseUrlController.dispose();
+    // Telavox
+    _telavoxJwtTokenController.dispose();
+    _telavoxBaseUrlController.dispose();
+    _telavoxPollInterval = 5; // Default
+    _telavoxExemptionTime = 2; // Default
+    // MGR
+    _mgrApiKeyController.dispose();
+    _mgrResourceIdController.dispose();
     super.dispose();
   }
+
+  bool get windowIsAvailable => windowManagerKey.currentState!.window != null;
+  Future<bool> get windowIsVisible async =>
+      (windowIsAvailable &&
+          await windowManagerKey.currentState!.window!.isVisible());
+  int get windowID => widget.windowID;
 
   Future<void> windowManager({
     WindowOptions? options,
     bool visible = true,
+    required WindowManagerPlus window,
   }) async {
     options ??= widget.windowOptions;
-    window = WindowManagerPlus.fromWindowId(widget.windowID);
-    await window!
-        .waitUntilReadyToShow(options, () async {
-          await window!.setAsFrameless();
-          await window!.setPreventClose(true);
+    this.window = (window);
+    await this.window
+        ?.waitUntilReadyToShow(options, () async {
+          await this.window!.setAsFrameless();
+          await this.window!.setPreventClose(true);
         })
         .then((_) async {
           if (visible) {
-            await window!.show();
+            await show();
           } else {
-            await window!.hide();
+            await hide();
           }
         });
   }
@@ -89,65 +178,95 @@ class ConfigScreenState extends State<ConfigScreen> {
   Future<void> show() async {
     if (window != null) {
       await window!.show();
+      // It's often a good idea to also focus the window when showing it
+      await window!.focus();
+      log('Window shown and focused');
+    } else {
+      // Only throw if the window instance is actually null
+      log('Error: Attempted to show a null window.');
+      throw Exception(
+        'Window instance is null in ConfigScreenState. Cannot show.',
+      );
     }
-    throw Exception('Window is null');
   }
 
   Future<void> hide() async {
     if (window != null) {
       await window!.hide();
+      log('Window hidden');
+    } else {
+      // Only throw if the window instance is actually null
+      log('Error: Attempted to hide a null window.');
+      throw Exception(
+        'Window instance is null in ConfigScreenState. Cannot hide.',
+      );
     }
-    throw Exception('Window is null');
   }
 
   void _loadCurrentConfig() async {
     final config = await _configService.loadConfig();
-    setState(() {
-      _jwtTokenController.text = config.jwtToken ?? '';
-      _baseUrlController.text = config.baseUrl;
-      _pollInterval = config.pollInterval;
-      _exemptionTime = config.exemptionTime;
-    });
+    if (mounted) {
+      setState(() {
+        // Telavox
+        _telavoxJwtTokenController.text = config.telavoxJwtToken ?? '';
+        _telavoxBaseUrlController.text = config.telavoxBaseUrl;
+        _telavoxPollInterval = config.telavoxPollInterval;
+        _telavoxExemptionTime = config.telavoxExemptionTime;
+
+        // MGR
+        _mgrApiKeyController.text = config.mgrApiKey ?? '';
+        //  _updateMgrClient(); // Initialize MGR client if API key exists
+      });
+    }
   }
 
   void _saveConfig() async {
     try {
       await _configService.updateConfig(
-        jwtToken: _jwtTokenController.text,
-        baseUrl: _baseUrlController.text,
-        pollInterval: _pollInterval,
-        exemptionTime: _exemptionTime,
-      );
+        // Telavox
+        telavoxJwtToken: _telavoxJwtTokenController.text,
+        telavoxBaseUrl: _telavoxBaseUrlController.text,
+        telavoxPollInterval: _telavoxPollInterval,
+        telavoxExemptionTime: _telavoxExemptionTime,
 
-      displayInfoBar(
-        context,
-        builder:
-            (context, close) => InfoBar(
-              title: const Text('Configuration Saved'),
-              content: Text(
-                'Successfully saved file to: ${_configService.configFile.path}',
-              ),
-              severity: InfoBarSeverity.success,
-              action: IconButton(
-                icon: const Icon(FluentIcons.clear),
-                onPressed: close,
-              ),
-            ),
+        // MGR
+        mgrApiKey: _mgrApiKeyController.text,
       );
+      // _updateMgrClient(); // Update MGR client in case API key changed
+
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder:
+              (context, close) => InfoBar(
+                title: const Text('Configuration Saved'),
+                content: Text(
+                  'Successfully saved file to: ${_configService.configFile.path}',
+                ),
+                severity: InfoBarSeverity.success,
+                action: IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: close,
+                ),
+              ),
+        );
+      }
     } catch (e) {
-      displayInfoBar(
-        context,
-        builder:
-            (context, close) => InfoBar(
-              title: const Text('Validation Error'),
-              content: Text('Failed to save configuration: ${e.toString()}'),
-              severity: InfoBarSeverity.error,
-              action: IconButton(
-                icon: const Icon(FluentIcons.clear),
-                onPressed: close,
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder:
+              (context, close) => InfoBar(
+                title: const Text('Save Error'),
+                content: Text('Failed to save configuration: ${e.toString()}'),
+                severity: InfoBarSeverity.error,
+                action: IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: close,
+                ),
               ),
-            ),
-      );
+        );
+      }
     }
   }
 
@@ -155,12 +274,12 @@ class ConfigScreenState extends State<ConfigScreen> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Application Configuration'),
+        title: const Text('Application Configuration'), // Kept original title
         commandBar: CommandBar(
           primaryItems: [
             CommandBarButton(
               icon: const Icon(FluentIcons.save),
-              label: const Text('Save Configuration'),
+              label: const Text('Save All Configuration'),
               onPressed: _saveConfig,
             ),
           ],
@@ -169,104 +288,270 @@ class ConfigScreenState extends State<ConfigScreen> {
       content: ListView(
         padding: const EdgeInsets.all(20),
         children: [
+          Text(
+            'Telavox Monitor Configuration',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          const SizedBox(height: 10),
           InfoLabel(
-            label: 'JWT Token',
+            label: 'Telavox JWT Token',
             child: TextBox(
-              controller: _jwtTokenController,
+              controller: _telavoxJwtTokenController,
               placeholder: 'Enter your Telavox JWT Token',
               maxLines: 2,
             ),
           ),
           const SizedBox(height: 20),
           InfoLabel(
-            label: 'Base URL',
+            label: 'Telavox Base URL',
             child: TextBox(
-              controller: _baseUrlController,
+              controller: _telavoxBaseUrlController,
               placeholder: 'https://api.telavox.se',
             ),
           ),
           const SizedBox(height: 20),
           InfoLabel(
-            label: 'Poll Interval (seconds)',
+            label: 'Telavox Poll Interval (seconds)',
             child: NumberBox<int>(
-              value: _pollInterval,
-              onChanged: (value) => setState(() => _pollInterval = value ?? 5),
+              value: _telavoxPollInterval,
+              onChanged: (value) {
+                if (mounted) setState(() => _telavoxPollInterval = value ?? 5);
+              },
               min: 1,
               max: 60,
             ),
           ),
           const SizedBox(height: 20),
           InfoLabel(
-            label: 'Exemption Time (minutes)',
+            label: 'Telavox Exemption Time (minutes)',
             child: NumberBox<int>(
-              value: _exemptionTime,
-              onChanged: (value) => setState(() => _exemptionTime = value ?? 2),
+              value: _telavoxExemptionTime,
+              onChanged: (value) {
+                if (mounted) setState(() => _telavoxExemptionTime = value ?? 2);
+              },
               min: 1,
               max: 60,
             ),
           ),
+          const SizedBox(height: 30),
+          const Divider(),
+          const SizedBox(height: 10),
+          Text(
+            'MGR API Test Utility',
+            style: FluentTheme.of(context).typography.subtitle,
+          ),
+          const SizedBox(height: 20),
+          InfoLabel(
+            label: 'MGR API Key',
+            child: TextBox(
+              controller: _mgrApiKeyController,
+              placeholder: 'Enter your MGR API Key',
+              maxLines: 1,
+              onChanged:
+                  (_) => _updateMgrClient(), // Update client on key change
+            ),
+          ),
+          const SizedBox(height: 20),
+          InfoLabel(
+            label: 'Select MGR API Resource:',
+            child: ComboBox<Resources>(
+              value: _selectedMgrResource,
+              items:
+                  Resources.values.map((Resources resource) {
+                    return ComboBoxItem<Resources>(
+                      value: resource,
+                      child: Text(resource.name),
+                    );
+                  }).toList(),
+              onChanged: (Resources? value) {
+                if (value != null) {
+                  setState(() {
+                    _selectedMgrResource = value;
+                    _mgrResourceIdController.clear();
+                    _mgrApiResponseText = '';
+                  });
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed:
+                (_mgrClient == null ||
+                        _selectedMgrResource == null ||
+                        _isLoadingMgrApi)
+                    ? null
+                    : _makeMgrApiCall,
+            child:
+                _isLoadingMgrApi
+                    ? const ProgressRing()
+                    : Text(
+                      'Call MGR API: ${_selectedMgrResource?.name ?? "Resource"}',
+                    ),
+          ),
+          const SizedBox(height: 20),
+          if (_mgrApiResponseText.isNotEmpty) ...[
+            InfoLabel(
+              label: 'MGR API Response:',
+              child: Card(
+                padding: const EdgeInsets.all(10),
+                child: SelectableText(
+                  _mgrApiResponseText,
+                  style: FluentTheme.of(context).typography.body,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  void _updateMgrClient() {
+    if (_mgrApiKeyController.text.isNotEmpty) {
+      setState(() {
+        _mgrClient = MgrClient(apiKey: _mgrApiKeyController.text);
+      });
+    } else {
+      setState(() {
+        _mgrClient = null;
+      });
+    }
+  }
+
+  Future<void> _makeMgrApiCall() async {
+    if (_mgrClient == null) {
+      setState(() {
+        _mgrApiResponseText =
+            'Error: MGR API Key is not set or client not initialized.';
+      });
+      return;
+    }
+    if (_selectedMgrResource == null) {
+      setState(() {
+        _mgrApiResponseText = 'Error: No MGR API resource selected.';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingMgrApi = true;
+      _mgrApiResponseText = 'Loading...';
+    });
+
+    try {
+      dynamic response;
+
+      log("Making MGR API call to $_selectedMgrResource ");
+      response = await _mgrClient!.request(resource: _selectedMgrResource!);
+
+      setState(() {
+        if (response == null) {
+          _mgrApiResponseText = 'Operation successful (No content returned).';
+        } else {
+          _mgrApiResponseText = 'Success:\n${response.toString()}';
+          if (response is UserResource) {
+            _mgrApiResponseText +=
+                '\nRaw Data:\n${JsonEncoder.withIndent('  ').convert(response.rawData)}';
+          } else if (response is List<UserResource>) {
+            _mgrApiResponseText +=
+                '\nRaw Data:\n${JsonEncoder.withIndent('  ').convert(response.map((e) => e.rawData).toList())}';
+          }
+          // Add handling for other response types like ResourceIdResponse if you implement it
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _mgrApiResponseText = 'Error:\n${e.toString()}';
+      });
+      log("MGR API Call Error: $e");
+    } finally {
+      setState(() {
+        _isLoadingMgrApi = false;
+      });
+    }
+  }
 }
 
 class Config {
-  final String? jwtToken;
-  final String baseUrl;
-  final int pollInterval;
-  final int exemptionTime;
+  // Telavox fields
+  final String? telavoxJwtToken;
+  final String telavoxBaseUrl;
+  final int telavoxPollInterval;
+  final int telavoxExemptionTime;
+
+  // MGR field
+  final String? mgrApiKey;
+
+  // Shared (if any, e.g., recentCalls was there before)
   final Map<String, dynamic>? recentCalls;
 
   Config({
-    this.jwtToken,
-    this.baseUrl = 'https://api.telavox.se',
-    this.pollInterval = 5,
-    this.exemptionTime = 2,
+    // Telavox
+    this.telavoxJwtToken,
+    this.telavoxBaseUrl = 'https://api.telavox.se', // Default Telavox URL
+    this.telavoxPollInterval = 5,
+    this.telavoxExemptionTime = 2,
+
+    // MGR
+    this.mgrApiKey,
+
+    // Shared
     this.recentCalls,
   });
 
   factory Config.fromJson(Map<String, dynamic> json) {
     return Config(
-      jwtToken: json['credentials']?['jwt_token'],
-      baseUrl: json['settings']?['base_url'] ?? 'https://api.telavox.se',
-      pollInterval: json['settings']?['poll_interval'] ?? 5,
-      exemptionTime: json['settings']?['exemption_time'] ?? 2,
+      // Telavox
+      telavoxJwtToken: json['telavox_credentials']?['jwt_token'],
+      telavoxBaseUrl:
+          json['telavox_settings']?['base_url'] ?? 'https://api.telavox.se',
+      telavoxPollInterval: json['telavox_settings']?['poll_interval'] ?? 5,
+      telavoxExemptionTime: json['telavox_settings']?['exemption_time'] ?? 2,
+
+      // MGR
+      mgrApiKey: json['mgr_credentials']?['api_key'],
+
+      // Shared
       recentCalls: json['recent_calls'],
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'credentials': {'jwt_token': jwtToken},
-    'settings': {
-      'base_url': baseUrl,
-      'poll_interval': pollInterval,
-      'exemption_time': exemptionTime,
+    'telavox_credentials': {'jwt_token': telavoxJwtToken},
+    'telavox_settings': {
+      'base_url': telavoxBaseUrl,
+      'poll_interval': telavoxPollInterval,
+      'exemption_time': telavoxExemptionTime,
     },
+    'mgr_credentials': {'api_key': mgrApiKey},
     'recent_calls': recentCalls ?? {},
   };
 
   Config copyWith({
-    String? jwtToken,
-    String? baseUrl,
-    int? pollInterval,
-    int? exemptionTime,
+    // Use Opt<T> pattern for nullable fields if you need to distinguish
+    // between 'not set' and 'set to null'. For simplicity here, just nullable.
+    String? telavoxJwtToken,
+    String? telavoxBaseUrl,
+    int? telavoxPollInterval,
+    int? telavoxExemptionTime,
+    String? mgrApiKey,
+    Map<String, dynamic>? recentCalls,
   }) {
     return Config(
-      jwtToken: jwtToken ?? this.jwtToken,
-      baseUrl: baseUrl ?? this.baseUrl,
-      pollInterval: pollInterval ?? this.pollInterval,
-      exemptionTime: exemptionTime ?? this.exemptionTime,
-      recentCalls: recentCalls,
+      telavoxJwtToken: telavoxJwtToken ?? this.telavoxJwtToken,
+      telavoxBaseUrl: telavoxBaseUrl ?? this.telavoxBaseUrl,
+      telavoxPollInterval: telavoxPollInterval ?? this.telavoxPollInterval,
+      telavoxExemptionTime: telavoxExemptionTime ?? this.telavoxExemptionTime,
+      mgrApiKey: mgrApiKey ?? this.mgrApiKey,
+      recentCalls: recentCalls ?? this.recentCalls,
     );
   }
 }
 
 class ConfigService {
   static final ConfigService _instance = ConfigService._internal();
-
   factory ConfigService() => _instance;
-
   ConfigService._internal();
 
   File get configFile {
@@ -275,49 +560,51 @@ class ConfigService {
         Platform.environment['HOME'] ??
             Platform.environment['USERPROFILE'] ??
             '.',
-        '.telavox-monitor',
+        '.telavox-monitor-config', // Unified config folder name
       ),
     );
-
-    if (!appDir.existsSync()) {
-      appDir.createSync(recursive: true);
-    }
-
-    return File(path.join(appDir.path, 'config.json'));
+    if (!appDir.existsSync()) appDir.createSync(recursive: true);
+    return File(
+      path.join(appDir.path, 'app_config.json'),
+    ); // Unified config file name
   }
 
   Future<Config> loadConfig() async {
-    if (!configFile.existsSync()) {
-      return Config(); // Return default config
-    }
-
+    if (!configFile.existsSync()) return Config(); // Return default for all
     try {
       final contents = await configFile.readAsString();
+      if (contents.isEmpty) return Config();
       final Map<String, dynamic> json = jsonDecode(contents);
       return Config.fromJson(json);
     } catch (e) {
-      // If there's an error reading the config, return default
-      return Config();
+      log("Error loading config: $e");
+      return Config(); // Return default on error
     }
   }
 
   Future<void> updateConfig({
-    String? jwtToken,
-    String? baseUrl,
-    int? pollInterval,
-    int? exemptionTime,
+    // Telavox
+    String? telavoxJwtToken,
+    String? telavoxBaseUrl,
+    int? telavoxPollInterval,
+    int? telavoxExemptionTime,
+    // MGR
+    String? mgrApiKey,
   }) async {
     final currentConfig = await loadConfig();
-
     final newConfig = currentConfig.copyWith(
-      jwtToken: jwtToken,
-      baseUrl: baseUrl,
-      pollInterval: pollInterval,
-      exemptionTime: exemptionTime,
+      // Telavox
+      telavoxJwtToken: telavoxJwtToken,
+      telavoxBaseUrl: telavoxBaseUrl,
+      telavoxPollInterval: telavoxPollInterval,
+      telavoxExemptionTime: telavoxExemptionTime,
+      // MGR
+      mgrApiKey: mgrApiKey,
+      // Shared (ensure it's preserved if not updated)
+      recentCalls: currentConfig.recentCalls,
     );
-
     await configFile.writeAsString(
-      JsonEncoder.withIndent('  ').convert(newConfig.toJson()),
+      const JsonEncoder.withIndent('  ').convert(newConfig.toJson()),
     );
   }
 }
