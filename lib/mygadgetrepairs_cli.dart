@@ -1,7 +1,6 @@
 // ignore_for_file: non_constant_identifier_names
 
 import 'dart:convert';
-import 'dart:io';
 import 'package:http/http.dart' as http;
 
 enum Resources {
@@ -81,8 +80,9 @@ class MgrClient {
       if (parsedBody is Map<String, dynamic>) {
         return UserResource.fromJson(parsedBody);
         // ignore: curly_braces_in_flow_control_structures
-      } else
+      } else {
         throw Exception(response.statusCode);
+      }
     } on http.ClientException catch (e) {
       throw Exception("Network error: ${e.message}");
     }
