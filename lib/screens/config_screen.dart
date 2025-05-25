@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
-import 'dart:ui';
+
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:flutter/material.dart' as materialdesign;
 import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
-import 'package:window_manager_plus/window_manager_plus.dart';
 import 'package:system_tray/system_tray.dart';
+import 'package:window_manager_plus/window_manager_plus.dart';
 
 Future<void> main(List<String> args) async {
   log('Starting application debug/sample/standalone application...');
@@ -18,13 +18,7 @@ Future<void> main(List<String> args) async {
     switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
       case 'settings' || null || '':
         runApp(
-          FluentApp(
-            home: ConfigScreen(
-              windowOptions: WindowOptions(),
-              windowID: WindowManagerPlus.current.id,
-              key: windowManagerKey,
-            ),
-          ),
+          configScreenAppExample(),
         );
       default:
         log('Unsupported argument: ${args.firstOrNull}');
@@ -44,6 +38,20 @@ Future<void> main(List<String> args) async {
       await initSystemTray();
     });
   });
+}
+
+FluentApp configScreenAppExample() {
+  return FluentApp(
+          home: configScreenWidgetExample(),
+        );
+}
+
+ConfigScreen configScreenWidgetExample() {
+  return ConfigScreen(
+            windowOptions: WindowOptions(),
+            windowID: WindowManagerPlus.current.id,
+            key: windowManagerKey,
+          );
 }
 
 Future<void> initSystemTray() async {
@@ -86,13 +94,7 @@ List<MenuItemBase> menus = [
 final GlobalKey<ConfigScreenState> windowManagerKey =
     GlobalKey<ConfigScreenState>();
 
-FluentApp get configWidgetExample => FluentApp(
-  home: ConfigScreen(
-    windowOptions: WindowOptions(),
-    windowID: WindowManagerPlus.current.id,
-    key: windowManagerKey,
-  ),
-);
+FluentApp get configWidgetExample => configScreenAppExample();
 
 class ConfigScreen extends StatefulWidget {
   final WindowOptions windowOptions;

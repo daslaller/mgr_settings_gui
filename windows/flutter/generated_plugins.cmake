@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  firebase_auth
+  firebase_core
   screen_retriever_windows
   system_tray
   window_manager_plus
