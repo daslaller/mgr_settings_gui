@@ -188,14 +188,7 @@ class ConfigScreenState extends State<ConfigScreen> {
         });
   }
 
-  MenuItemBase settingsMenu = MenuItemLabel(
-    label: 'Settings',
-    onClicked: (_) async {
-      WindowManagerPlus.createWindow([
-        jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
-      ]);
-    },
-  );
+
   Future<void> show() async {
     if (window != null) {
       await window!.show();

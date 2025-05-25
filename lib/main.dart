@@ -13,6 +13,7 @@ import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_screen.dart';
 
+Size configScreenSize = Size(800, 600);
 Menu contextMenu = Menu();
 final GlobalKey<conf.ConfigScreenState> configKey =
     GlobalKey<conf.ConfigScreenState>();
@@ -22,18 +23,24 @@ void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   log('Starting application debug/sample/standalone application...');
-  WidgetsBinding ensureInitialized = WidgetsFlutterBinding.ensureInitialized();
-
+  WidgetsFlutterBinding.ensureInitialized();
   await WindowManagerPlus.ensureInitialized(
     int.parse(args.lastOrNull ?? '0'),
   ).then((_) async {
-    switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
+    Map<String, dynamic> jsonArgs = jsonDecode(args.firstOrNull ?? '{}');
+    switch (jsonArgs['WindowName']) {
       case null || '': // initial startup
         runApp(
           mainApp, // Program entrypoint.
         );
-      case 'settings':
-        runApp(conf.configScreenAppExample());
+        log('mainapp received window id: ${WindowManagerPlus.current.id}');
+      case 'Settings':
+        double width = double.parse(jsonArgs['Size']['width']);
+        double height = double.parse(jsonArgs['Size']['height']);
+        Size size = Size(width, height);
+        WindowManagerPlus.current.setSize(size);
+        runApp(configApp);
+        log('configapp received window id: ${WindowManagerPlus.current.id}');
       default:
         log('Unsupported argument: ${args.firstOrNull}');
         runApp(
@@ -53,20 +60,37 @@ void main(List<String> args) async {
       systemTray.popUpContextMenu();
     }
     systemTray.setContextMenu(contextMenu);
-    contextMenu.buildFrom([configKey.currentState!.settingsMenu, exitMenu]);
+    contextMenu.buildFrom([settingsMenu, exitMenu]);
   });
 }
 
+MenuItemBase settingsMenu = MenuItemLabel(
+  label: 'Settings',
+  onClicked: (_) async {
+    WindowManagerPlus? createWindow = await WindowManagerPlus.createWindow([
+      jsonEncode(
+        {
+              'WindowName': 'Settings',
+              'Size': {
+                'height': configScreenSize.height,
+                'width': configScreenSize.width,
+              },
+            }
+      ),
+    ]);
+    if (createWindow == null)
+      log('Window creation has failed, mossnerg suger!');
+  },
+);
 MenuItemBase exitMenu = MenuItemLabel(label: 'Exit', onClicked: (_) => exit(1));
 
-conf.ConfigScreen customConfigScreen = conf.ConfigScreen(
-  windowOptions: WindowOptions(),
-  windowID: WindowManagerPlus.current.id,
-  key: configKey,
-);
-FluentApp configApp = FluentApp(
+FluentApp get configApp => FluentApp(
   title: 'Inställningar',
-  home: customConfigScreen,
+  home: conf.ConfigScreen(
+    windowOptions: WindowOptions(),
+    windowID: WindowManagerPlus.current.id,
+    key: configKey,
+  ),
 );
 
 FluentApp mainApp = FluentApp(
