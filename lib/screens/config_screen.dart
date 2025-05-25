@@ -48,11 +48,13 @@ ConfigScreen configScreenWidgetExample() {
     windowOptions: WindowOptions(),
     windowID: WindowManagerPlus.current.id,
     key: windowManagerKey,
+    window: WindowManagerPlus.current,
   );
 }
 
 Menu menu = Menu();
 SystemTray systemTray = SystemTray();
+
 Future<void> initSystemTray({bool useDefault = false}) async {
   await systemTray.initSystemTray(
     title: "system tray",
@@ -82,7 +84,7 @@ List<MenuItemBase> menus = [];
 MenuItemBase menuItemBaseExample = MenuItemLabel(
   label: 'Settings',
   onClicked: (MenuItemBase item) async {
-    if (await windowManagerKey.currentState!.windowIsAvailable() != true) {
+    if (windowManagerKey.currentState != null) {
       log('Creating window');
       WindowManagerPlus.createWindow([
         jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
@@ -105,12 +107,23 @@ FluentApp get configWidgetExample => configScreenAppExample();
 class ConfigScreen extends StatefulWidget {
   final WindowOptions windowOptions;
   final int windowID;
+  final WindowManagerPlus window;
+
   const ConfigScreen({
     super.key,
     required this.windowOptions,
     required this.windowID,
+    required this.window,
   });
-
+init() async {
+  await window.waitUntilReadyToShow(
+    windowOptions,
+        () async {
+      await window!.setAsFrameless();
+      await window!.setPreventClose(true);
+    },
+  );
+}
   @override
   ConfigScreenState createState() => ConfigScreenState();
 }
@@ -121,7 +134,6 @@ class ConfigScreenState extends State<ConfigScreen> {
   late TextEditingController _telavoxBaseUrlController;
   late int _telavoxPollInterval;
   late int _telavoxExemptionTime;
-  late WindowManagerPlus? window;
 
   // --- MGR API State Variables ---
   late TextEditingController _mgrApiKeyController;
@@ -131,9 +143,10 @@ class ConfigScreenState extends State<ConfigScreen> {
       TextEditingController();
   String _mgrApiResponseText = '';
   bool _isLoadingMgrApi = false;
+
   // --- End MGR API State ---
   @override
-  initState() {
+  initState() async {
     super.initState();
     _telavoxJwtTokenController = TextEditingController();
     _telavoxBaseUrlController = TextEditingController();
@@ -141,6 +154,7 @@ class ConfigScreenState extends State<ConfigScreen> {
     _telavoxExemptionTime = 2;
     _mgrApiKeyController = TextEditingController();
     _loadCurrentConfig();
+
   }
 
   @override
@@ -156,14 +170,7 @@ class ConfigScreenState extends State<ConfigScreen> {
     super.dispose();
   }
 
-  Future<bool> windowIsAvailable() async {
-    return windowManagerKey.currentState!.window != null;
-  }
-
-  Future<bool> windowIsVisible() async {
-    return (await windowIsAvailable() &&
-        await windowManagerKey.currentState!.window!.isVisible());
-  }
+  Future<bool> windowIsVisible() async => await widget.window.isVisible();
 
   int get windowID => widget.windowID;
 
@@ -173,11 +180,10 @@ class ConfigScreenState extends State<ConfigScreen> {
     required WindowManagerPlus window,
   }) async {
     options ??= widget.windowOptions;
-    this.window = (window);
-    await this.window
-        ?.waitUntilReadyToShow(options, () async {
-          await this.window!.setAsFrameless();
-          await this.window!.setPreventClose(true);
+    await widget.window
+        .waitUntilReadyToShow(options, () async {
+          await widget.window!.setAsFrameless();
+          await widget.window!.setPreventClose(true);
         })
         .then((_) async {
           if (visible) {
@@ -188,33 +194,16 @@ class ConfigScreenState extends State<ConfigScreen> {
         });
   }
 
-
   Future<void> show() async {
-    if (window != null) {
-      await window!.show();
-      // It's often a good idea to also focus the window when showing it
-      await window!.focus();
-      log('Window shown and focused');
-    } else {
-      // Only throw if the window instance is actually null
-      log('Error: Attempted to show a null window.');
-      throw Exception(
-        'Window instance is null in ConfigScreenState. Cannot show.',
-      );
-    }
+    await widget.window!.show();
+    // It's often a good idea to also focus the window when showing it
+    await widget.window!.focus();
+    log('Window shown and focused');
   }
 
   Future<void> hide() async {
-    if (window != null) {
-      await window!.hide();
-      log('Window hidden');
-    } else {
-      // Only throw if the window instance is actually null
-      log('Error: Attempted to hide a null window.');
-      throw Exception(
-        'Window instance is null in ConfigScreenState. Cannot hide.',
-      );
-    }
+    await widget.window!.hide();
+    log('Window hidden');
   }
 
   void _loadCurrentConfig() async {
@@ -565,7 +554,9 @@ class Config {
 
 class ConfigService {
   static final ConfigService _instance = ConfigService._internal();
+
   factory ConfigService() => _instance;
+
   ConfigService._internal();
 
   File get configFile {
