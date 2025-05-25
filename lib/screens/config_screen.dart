@@ -17,9 +17,7 @@ Future<void> main(List<String> args) async {
   ).then((_) {
     switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
       case 'settings' || null || '':
-        runApp(
-          configScreenAppExample(),
-        );
+        runApp(configScreenAppExample());
       default:
         log('Unsupported argument: ${args.firstOrNull}');
         runApp(
@@ -35,35 +33,34 @@ Future<void> main(List<String> args) async {
         window: WindowManagerPlus.current,
         visible: true,
       );
-      await initSystemTray();
+      await initSystemTray(useDefault: true);
+      await _updateContext();
     });
   });
 }
 
 FluentApp configScreenAppExample() {
-  return FluentApp(
-          home: configScreenWidgetExample(),
-        );
+  return FluentApp(home: configScreenWidgetExample());
 }
 
 ConfigScreen configScreenWidgetExample() {
   return ConfigScreen(
-            windowOptions: WindowOptions(),
-            windowID: WindowManagerPlus.current.id,
-            key: windowManagerKey,
-          );
+    windowOptions: WindowOptions(),
+    windowID: WindowManagerPlus.current.id,
+    key: windowManagerKey,
+  );
 }
 
-Future<void> initSystemTray() async {
-  SystemTray systemTray = SystemTray();
+Menu menu = Menu();
+SystemTray systemTray = SystemTray();
+Future<void> initSystemTray({bool useDefault = false}) async {
   await systemTray.initSystemTray(
     title: "system tray",
     iconPath: 'assets/app_icon.ico',
   );
-  Menu menu = Menu();
-  await menu.buildFrom(menus);
-  await systemTray.setContextMenu(menu);
-
+  if (useDefault) {
+    addItem([menuItemBaseExample]);
+  }
   systemTray.registerSystemTrayEventHandler((eventName) {
     if (eventName.contains(kSystemTrayEventRightClick)) {
       systemTray.popUpContextMenu();
@@ -71,25 +68,34 @@ Future<void> initSystemTray() async {
   });
 }
 
-List<MenuItemBase> menus = [
-  MenuItemLabel(
-    label: 'Settings',
-    onClicked: (MenuItemBase item) async {
-      if (!windowManagerKey.currentState!.windowIsAvailable) {
-        log('Creating window');
-        WindowManagerPlus.createWindow([
-          jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
-        ]);
-      } else {
-        log('Window already exists');
+_updateContext() async {
+  await menu.buildFrom(menus);
+  await systemTray.setContextMenu(menu);
+}
 
-        (await windowManagerKey.currentState!.windowIsVisible)
-            ? await windowManagerKey.currentState!.hide()
-            : await windowManagerKey.currentState!.show();
-      }
-    },
-  ),
-];
+addItem(List<MenuItemBase> menuitembase) async => {
+  menus.addAll(menuitembase),
+  await _updateContext(),
+};
+
+List<MenuItemBase> menus = [];
+MenuItemBase menuItemBaseExample = MenuItemLabel(
+  label: 'Settings',
+  onClicked: (MenuItemBase item) async {
+    if (await windowManagerKey.currentState!.windowIsAvailable() != true) {
+      log('Creating window');
+      WindowManagerPlus.createWindow([
+        jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
+      ]);
+    } else {
+      log('Window already exists');
+
+      (await windowManagerKey.currentState!.windowIsVisible())
+          ? await windowManagerKey.currentState!.hide()
+          : await windowManagerKey.currentState!.show();
+    }
+  },
+);
 
 final GlobalKey<ConfigScreenState> windowManagerKey =
     GlobalKey<ConfigScreenState>();
@@ -150,10 +156,15 @@ class ConfigScreenState extends State<ConfigScreen> {
     super.dispose();
   }
 
-  bool get windowIsAvailable => windowManagerKey.currentState!.window != null;
-  Future<bool> get windowIsVisible async =>
-      (windowIsAvailable &&
-          await windowManagerKey.currentState!.window!.isVisible());
+  Future<bool> windowIsAvailable() async {
+    return windowManagerKey.currentState!.window != null;
+  }
+
+  Future<bool> windowIsVisible() async {
+    return (await windowIsAvailable() &&
+        await windowManagerKey.currentState!.window!.isVisible());
+  }
+
   int get windowID => widget.windowID;
 
   Future<void> windowManager({
@@ -177,6 +188,14 @@ class ConfigScreenState extends State<ConfigScreen> {
         });
   }
 
+  MenuItemBase settingsMenu = MenuItemLabel(
+    label: 'Settings',
+    onClicked: (_) async {
+      WindowManagerPlus.createWindow([
+        jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
+      ]);
+    },
+  );
   Future<void> show() async {
     if (window != null) {
       await window!.show();

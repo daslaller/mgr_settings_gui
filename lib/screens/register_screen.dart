@@ -1,30 +1,36 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'register_screen.dart'; // Import the new register screen
 
-class LoginScreen extends StatefulWidget {
+class RegisterScreen extends StatefulWidget {
   final void Function(User user) onSuccess;
 
-  const LoginScreen({super.key, required this.onSuccess});
+  const RegisterScreen({super.key, required this.onSuccess});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   String? errorText;
   bool loading = false;
 
-  Future<void> loginUser() async { // Renamed from loginOrCreate
+  Future<void> registerUser() async {
     final auth = FirebaseAuth.instance;
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => errorText = 'Please enter both email and password.');
+    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      setState(() => errorText = 'Please fill in all fields.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      setState(() => errorText = 'Passwords do not match.');
       return;
     }
 
@@ -34,31 +40,30 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final userCredential = await auth.signInWithEmailAndPassword(
+      final userCredential = await auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
       widget.onSuccess(userCredential.user!);
     } on FirebaseAuthException catch (e) {
-      // Removed user-not-found block for auto-registration
-      setState(() => errorText = 'Login failed: ${e.message}');
+      setState(() => errorText = 'Registration failed: ${e.message}');
     } finally {
       setState(() => loading = false);
     }
   }
 
-  void navigateToRegisterScreen() {
-    Navigator.push(
-      context,
-      FluentPageRoute(builder: (context) => RegisterScreen(onSuccess: widget.onSuccess)),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return NavigationView(
+      appBar: NavigationAppBar(
+        leading: IconButton(
+          icon: const Icon(FluentIcons.back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('Register'),
+      ),
       content: ScaffoldPage(
-        header: const PageHeader(title: Text('Swish Login')),
+        header: const PageHeader(title: Text('Create New Account')),
         content: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 300),
@@ -81,31 +86,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     placeholder: '••••••••',
                   ),
                 ),
+                const SizedBox(height: 12),
+                InfoLabel(
+                  label: 'Confirm Password',
+                  child: TextBox(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    placeholder: '••••••••',
+                  ),
+                ),
                 const SizedBox(height: 20),
                 if (errorText != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                       errorText!,
-                      style:  TextStyle(color: Colors.red),
+                      style: TextStyle(color: Colors.red),
                       textAlign: TextAlign.center,
                     ),
                   ),
                 loading
                     ? const ProgressRing()
-                    : Column( // Wrap buttons in a Column
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          FilledButton(
-                            onPressed: loginUser, // Updated to loginUser
-                            child: const Text('Login'),
-                          ),
-                          const SizedBox(height: 12),
-                          Button( // Changed to a regular Button for secondary action
-                            onPressed: navigateToRegisterScreen,
-                            child: const Text('Create Account'),
-                          ),
-                        ],
+                    : FilledButton(
+                        onPressed: registerUser,
+                        child: const Text('Register'),
                       ),
               ],
             ),
