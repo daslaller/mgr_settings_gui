@@ -1,13 +1,23 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:mgr_settings_gui/screens/config_screen.dart';
+import 'package:window_manager_plus/window_manager_plus.dart';
 
 class MainScreen extends StatelessWidget {
   final User user;
-  const MainScreen({super.key, required this.user});
+  final WindowManagerPlus window;
+  final WindowOptions windowOptions;
+  const MainScreen({super.key, required this.user, required this.window, required this.windowOptions});
 
+  init() async {
+    await window.waitUntilReadyToShow(windowOptions, () async {
+      await window.setAsFrameless();
+      await window.setPreventClose(true);
+    });
+  }
   @override
-  Widget build(BuildContext context) {
+ build(BuildContext context)  {
+
     return NavigationView(
       content: ScaffoldPage(
         header: PageHeader(

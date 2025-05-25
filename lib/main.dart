@@ -24,15 +24,28 @@ void main(List<String> args) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   log('Starting application debug/sample/standalone application...');
   WidgetsFlutterBinding.ensureInitialized();
+  log('working with args: $args');
   await WindowManagerPlus.ensureInitialized(
     int.parse(args.lastOrNull ?? '0'),
   ).then((_) async {
     Map<String, dynamic> jsonArgs = jsonDecode(args.firstOrNull ?? '{}');
-    switch (jsonArgs['WindowName']) {
+    switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
       case null || '': // initial startup
+        await systemTray.initSystemTray(
+          title: "system tray",
+          iconPath: 'assets/app_icon.ico',
+        );
+        systemTray.registerSystemTrayEventHandler((eventName) {
+          if (eventName.contains(kSystemTrayEventRightClick)) {
+            systemTray.popUpContextMenu();
+          }
+          systemTray.setContextMenu(contextMenu);
+          contextMenu.buildFrom([settingsMenu, exitMenu]);
+        });
         runApp(
           mainApp, // Program entrypoint.
         );
+
         log('mainapp received window id: ${WindowManagerPlus.current.id}');
       case 'Settings':
         double width = double.parse(jsonArgs['Size']['width']);
@@ -51,35 +64,23 @@ void main(List<String> args) async {
         );
     }
   });
-  await systemTray.initSystemTray(
-    title: "system tray",
-    iconPath: 'assets/app_icon.ico',
-  );
-  systemTray.registerSystemTrayEventHandler((eventName) {
-    if (eventName.contains(kSystemTrayEventRightClick)) {
-      systemTray.popUpContextMenu();
-    }
-    systemTray.setContextMenu(contextMenu);
-    contextMenu.buildFrom([settingsMenu, exitMenu]);
-  });
 }
 
 MenuItemBase settingsMenu = MenuItemLabel(
   label: 'Settings',
   onClicked: (_) async {
-    WindowManagerPlus? createWindow = await WindowManagerPlus.createWindow([
-      jsonEncode(
-        {
-              'WindowName': 'Settings',
-              'Size': {
-                'height': configScreenSize.height,
-                'width': configScreenSize.width,
-              },
-            }
-      ),
-    ]);
+    List<String> args = [
+      jsonEncode({
+        'WindowName': 'Settings',
+      }),
+    ];
+    WindowManagerPlus? createWindow = await WindowManagerPlus.createWindow(
+      args
+    );
     if (createWindow == null)
-      log('Window creation has failed, mossnerg suger!');
+      log(
+        'Window creation has failed, mossnerg suger! args passed $args length of arguments: ${args.length}',
+      );
   },
 );
 MenuItemBase exitMenu = MenuItemLabel(label: 'Exit', onClicked: (_) => exit(1));
@@ -90,10 +91,11 @@ FluentApp get configApp => FluentApp(
     windowOptions: WindowOptions(),
     windowID: WindowManagerPlus.current.id,
     key: configKey,
-  ),
+    window: WindowManagerPlus.current,
+  )..init(),
 );
 
-FluentApp mainApp = FluentApp(
+FluentApp get mainApp => FluentApp(
   title: 'Swish App',
   home: StreamBuilder<User?>(
     stream: FirebaseAuth.instance.authStateChanges(),
@@ -102,11 +104,40 @@ FluentApp mainApp = FluentApp(
         return const Center(child: ProgressRing());
       }
       if (snapshot.hasData) {
-        return MainScreen(user: snapshot.data!);
+        return MainScreen(
+          user: snapshot.data!,
+          window: WindowManagerPlus.current,
+          windowOptions: mainScreenWindowOptions,
+        )..init();
       } else {
-        return LoginScreen(onSuccess: (user) {});
+        return LoginScreen(
+          onSuccess: (user) {},
+          window: WindowManagerPlus.current,
+          windowOptions: loginScreenWindowOptions,
+        )..init();
       }
     },
   ),
   debugShowCheckedModeBanner: false,
+);
+WindowOptions mainScreenWindowOptions = WindowOptions(
+  center: true,
+  size: Size(800, 600),
+  skipTaskbar: true,
+  windowButtonVisibility: false,
+  titleBarStyle: TitleBarStyle.hidden,
+);
+WindowOptions loginScreenWindowOptions = WindowOptions(
+  center: true,
+  size: Size(800, 600),
+  skipTaskbar: true,
+  windowButtonVisibility: false,
+  titleBarStyle: TitleBarStyle.hidden,
+);
+WindowOptions configScreenWindowOptions = WindowOptions(
+  center: true,
+  size: Size(800, 600),
+  skipTaskbar: true,
+  windowButtonVisibility: false,
+  titleBarStyle: TitleBarStyle.hidden,
 );
