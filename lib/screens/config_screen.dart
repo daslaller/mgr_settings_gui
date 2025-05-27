@@ -3,40 +3,15 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
-import 'package:flutter/material.dart' as materialdesign;
 import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
-import 'package:system_tray/system_tray.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 
+// Only for testing and displaying the actual config window design
 Future<void> main(List<String> args) async {
   log('Starting application debug/sample/standalone application...');
   WidgetsBinding ensureInitialized = WidgetsFlutterBinding.ensureInitialized();
-  await WindowManagerPlus.ensureInitialized(
-    int.parse(args.lastOrNull ?? '0'),
-  ).then((_) {
-    switch (jsonDecode(args.firstOrNull ?? '{}')['Window Name']) {
-      case 'settings' || null || '':
-        runApp(configScreenAppExample());
-      default:
-        log('Unsupported argument: ${args.firstOrNull}');
-        runApp(
-          const materialdesign.AlertDialog(
-            title: Text('Error'),
-            content: Text('Unsupported argument'),
-          ),
-        );
-    }
-    ensureInitialized.addPostFrameCallback((_) async {
-      log('post frame callback');
-      await windowManagerKey.currentState!.windowManager(
-        window: WindowManagerPlus.current,
-        visible: true,
-      );
-      await initSystemTray(useDefault: true);
-      await _updateContext();
-    });
-  });
+  runApp(configScreenAppExample());
 }
 
 FluentApp configScreenAppExample() {
@@ -45,85 +20,38 @@ FluentApp configScreenAppExample() {
 
 ConfigScreen configScreenWidgetExample() {
   return ConfigScreen(
-    windowOptions: WindowOptions(),
+    windowOptions: WindowOptions(
+      size: Size(800, 600),
+      title: 'Settings',
+      center: true,
+      skipTaskbar: false,
+      titleBarStyle: TitleBarStyle.hidden,
+    ),
     windowID: WindowManagerPlus.current.id,
-    key: windowManagerKey,
     window: WindowManagerPlus.current,
   );
 }
 
-Menu menu = Menu();
-SystemTray systemTray = SystemTray();
-
-Future<void> initSystemTray({bool useDefault = false}) async {
-  await systemTray.initSystemTray(
-    title: "system tray",
-    iconPath: 'assets/app_icon.ico',
-  );
-  if (useDefault) {
-    addItem([menuItemBaseExample]);
-  }
-  systemTray.registerSystemTrayEventHandler((eventName) {
-    if (eventName.contains(kSystemTrayEventRightClick)) {
-      systemTray.popUpContextMenu();
-    }
-  });
-}
-
-_updateContext() async {
-  await menu.buildFrom(menus);
-  await systemTray.setContextMenu(menu);
-}
-
-addItem(List<MenuItemBase> menuitembase) async => {
-  menus.addAll(menuitembase),
-  await _updateContext(),
-};
-
-List<MenuItemBase> menus = [];
-MenuItemBase menuItemBaseExample = MenuItemLabel(
-  label: 'Settings',
-  onClicked: (MenuItemBase item) async {
-    if (windowManagerKey.currentState != null) {
-      log('Creating window');
-      WindowManagerPlus.createWindow([
-        jsonEncode({'Window Name': 'Settings', 'Size': Size(800, 600)}),
-      ]);
-    } else {
-      log('Window already exists');
-
-      (await windowManagerKey.currentState!.windowIsVisible())
-          ? await windowManagerKey.currentState!.hide()
-          : await windowManagerKey.currentState!.show();
-    }
-  },
-);
-
-final GlobalKey<ConfigScreenState> windowManagerKey =
-    GlobalKey<ConfigScreenState>();
-
-FluentApp get configWidgetExample => configScreenAppExample();
-
 class ConfigScreen extends StatefulWidget {
-  final WindowOptions windowOptions;
-  final int windowID;
+  final WindowOptions? windowOptions;
+  final int? windowID;
   final WindowManagerPlus window;
 
-  const ConfigScreen({
+  ConfigScreen({
     super.key,
-    required this.windowOptions,
-    required this.windowID,
-    required this.window,
-  });
-init() async {
-  await window.waitUntilReadyToShow(
-    windowOptions,
-        () async {
-      await window!.setAsFrameless();
-      await window!.setPreventClose(true);
-    },
-  );
-}
+    this.windowOptions,
+    int? windowID,
+    WindowManagerPlus? window,
+  }) : window = window ?? WindowManagerPlus.current,
+       windowID = windowID ?? WindowManagerPlus.current.id;
+
+  init() async {
+    await window.waitUntilReadyToShow(windowOptions, () async {
+      await window.setAsFrameless();
+      await window.setPreventClose(true);
+    });
+  }
+
   @override
   ConfigScreenState createState() => ConfigScreenState();
 }
@@ -146,7 +74,7 @@ class ConfigScreenState extends State<ConfigScreen> {
 
   // --- End MGR API State ---
   @override
-  initState() async {
+  initState() {
     super.initState();
     _telavoxJwtTokenController = TextEditingController();
     _telavoxBaseUrlController = TextEditingController();
@@ -154,7 +82,6 @@ class ConfigScreenState extends State<ConfigScreen> {
     _telavoxExemptionTime = 2;
     _mgrApiKeyController = TextEditingController();
     _loadCurrentConfig();
-
   }
 
   @override
@@ -170,9 +97,9 @@ class ConfigScreenState extends State<ConfigScreen> {
     super.dispose();
   }
 
-  Future<bool> windowIsVisible() async => await widget.window.isVisible();
+  Future<bool?> windowIsVisible() async => await widget.window?.isVisible();
 
-  int get windowID => widget.windowID;
+  int? get windowID => widget.windowID;
 
   Future<void> windowManager({
     WindowOptions? options,
@@ -181,9 +108,9 @@ class ConfigScreenState extends State<ConfigScreen> {
   }) async {
     options ??= widget.windowOptions;
     await widget.window
-        .waitUntilReadyToShow(options, () async {
-          await widget.window!.setAsFrameless();
-          await widget.window!.setPreventClose(true);
+        ?.waitUntilReadyToShow(options, () async {
+          await widget.window?.setAsFrameless();
+          await widget.window?.setPreventClose(true);
         })
         .then((_) async {
           if (visible) {
@@ -195,14 +122,14 @@ class ConfigScreenState extends State<ConfigScreen> {
   }
 
   Future<void> show() async {
-    await widget.window!.show();
+    await widget.window?.show();
     // It's often a good idea to also focus the window when showing it
-    await widget.window!.focus();
+    await widget.window?.focus();
     log('Window shown and focused');
   }
 
   Future<void> hide() async {
-    await widget.window!.hide();
+    await widget.window?.hide();
     log('Window hidden');
   }
 

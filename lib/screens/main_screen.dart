@@ -7,7 +7,8 @@ class MainScreen extends StatelessWidget {
   final User user;
   final WindowManagerPlus window;
   final WindowOptions windowOptions;
-  const MainScreen({super.key, required this.user, required this.window, required this.windowOptions});
+  final Widget mainScreen;
+  const MainScreen({super.key, required this.user, required this.window, required this.windowOptions, required this.mainScreen});
 
   init() async {
     await window.waitUntilReadyToShow(windowOptions, () async {
@@ -33,7 +34,7 @@ class MainScreen extends StatelessWidget {
             ],
           ),
         ),
-        content: Center(child: configScreenWidgetExample()),
+        content: Center(child: mainScreen),
       ),
     );
   }

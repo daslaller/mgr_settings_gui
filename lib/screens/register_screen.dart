@@ -58,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       appBar: NavigationAppBar(
         leading: IconButton(
           icon: const Icon(FluentIcons.back),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, '/login'),
         ),
         title: const Text('Register'),
       ),

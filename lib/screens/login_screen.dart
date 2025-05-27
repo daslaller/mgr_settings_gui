@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
+
 import 'register_screen.dart'; // Import the new register screen
 
 class LoginScreen extends StatefulWidget {
