@@ -3,14 +3,19 @@ import 'dart:developer';
 import 'dart:io';
 
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
+import 'package:flutter/foundation.dart';
 import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
 
 // Only for testing and displaying the actual config window design
 Future<void> main(List<String> args) async {
+  if(kDebugMode == true){
   log('Starting application debug/sample/standalone application...');
   WidgetsFlutterBinding.ensureInitialized();
   runApp(ConfigScreen());
+  }
+  throw Exception('Not a standalone application');
+
 }
 
 
