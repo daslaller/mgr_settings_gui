@@ -1,12 +1,10 @@
-import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:mgr_settings_gui/screens/register_screen.dart';
-import 'package:mgr_settings_gui/widgets/configApp.dart';
-import 'package:mgr_settings_gui/widgets/loginApp.dart';
+import 'package:mgr_settings_gui/screens/config_screen.dart';
+import 'package:mgr_settings_gui/screens/login_screen.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 
@@ -27,45 +25,42 @@ void main(List<String> args) async {
   await WindowManagerPlus.ensureInitialized(
     int.parse(args.firstOrNull ?? '0'),
   ).then((_) async {
-    switch (args) {
-      case []:
-        await systemTray.initSystemTray(
-          title: "system tray",
-          iconPath: 'assets/app_icon.ico',
-        );
-        systemTray.registerSystemTrayEventHandler((eventName) {
-          if (eventName.contains(kSystemTrayEventRightClick)) {
-            systemTray.popUpContextMenu();
-          }
-          systemTray.setContextMenu(contextMenu);
-          contextMenu.buildFrom([settingsMenu, exitMenu]);
-        });
-        runApp(
-          FluentApp(
-            initialRoute: '/login',
-            routes: {
-              '/login': (context) => loginApp,
-              '/config': (context) => configApp,
-              '/register': (context) => RegisterScreen(onSuccess: (user) {}),
-            },
-          ), // Program entrypoint.
-        );
-
-        log('mainapp received window id: ${WindowManagerPlus.current.id}');
-      default:
-        log('Unsupported argument: ${args.firstOrNull}');
-        runApp(
-          const ContentDialog(
-            title: Text('Error'),
-            content: Text('Unsupported argument'),
-          ),
-        );
-    }
+    await systemTray.initSystemTray(
+      title: "system tray",
+      iconPath: 'assets/app_icon.ico',
+    );
+    systemTray.registerSystemTrayEventHandler((eventName) {
+      if (eventName.contains(kSystemTrayEventRightClick)) {
+        systemTray.popUpContextMenu();
+      }
+      systemTray.setContextMenu(contextMenu);
+      contextMenu.buildFrom([settingsMenu, exitMenu]);
+    });
+    runApp(
+      mgrPbxApp(), // Program entrypoint.
+    );
+    log('mainapp received window id: ${WindowManagerPlus.current.id}');
   });
 }
 
+FluentApp mgrPbxApp() {
+  return FluentApp(
+      title: 'MGR Mobilx PBX',
+      theme: FluentThemeData(
+        brightness: Brightness.dark,
+        accentColor: Colors.purple,
+      ),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => constructLoginLogic(ConfigScreen()),
+        '/config': (context) => ConfigScreen(),
+        '/register': (context) => RegisterScreen(onSuccess: (user) {}),
+      },
+    );
+}
+
 MenuItemBase settingsMenu = MenuItemLabel(
-  label: 'Show',
+  label: 'Visa',
   onClicked: (_) async {
     if (await WindowManagerPlus.current.isVisible() == false ||
         await WindowManagerPlus.current.isMinimized()) {

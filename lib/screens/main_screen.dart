@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:mgr_settings_gui/screens/config_screen.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 
 class MainScreen extends StatelessWidget {

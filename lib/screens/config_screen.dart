@@ -5,52 +5,20 @@ import 'dart:io';
 import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
-import 'package:window_manager_plus/window_manager_plus.dart';
 
 // Only for testing and displaying the actual config window design
 Future<void> main(List<String> args) async {
   log('Starting application debug/sample/standalone application...');
-  WidgetsBinding ensureInitialized = WidgetsFlutterBinding.ensureInitialized();
-  runApp(configScreenAppExample());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(ConfigScreen());
 }
 
-FluentApp configScreenAppExample() {
-  return FluentApp(home: configScreenWidgetExample());
-}
-
-ConfigScreen configScreenWidgetExample() {
-  return ConfigScreen(
-    windowOptions: WindowOptions(
-      size: Size(800, 600),
-      title: 'Settings',
-      center: true,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-    ),
-    windowID: WindowManagerPlus.current.id,
-    window: WindowManagerPlus.current,
-  );
-}
 
 class ConfigScreen extends StatefulWidget {
-  final WindowOptions? windowOptions;
-  final int? windowID;
-  final WindowManagerPlus window;
 
-  ConfigScreen({
+  const ConfigScreen({
     super.key,
-    this.windowOptions,
-    int? windowID,
-    WindowManagerPlus? window,
-  }) : window = window ?? WindowManagerPlus.current,
-       windowID = windowID ?? WindowManagerPlus.current.id;
-
-  init() async {
-    await window.waitUntilReadyToShow(windowOptions, () async {
-      await window.setAsFrameless();
-      await window.setPreventClose(true);
-    });
-  }
+  });
 
   @override
   ConfigScreenState createState() => ConfigScreenState();
@@ -97,41 +65,6 @@ class ConfigScreenState extends State<ConfigScreen> {
     super.dispose();
   }
 
-  Future<bool?> windowIsVisible() async => await widget.window?.isVisible();
-
-  int? get windowID => widget.windowID;
-
-  Future<void> windowManager({
-    WindowOptions? options,
-    bool visible = true,
-    required WindowManagerPlus window,
-  }) async {
-    options ??= widget.windowOptions;
-    await widget.window
-        ?.waitUntilReadyToShow(options, () async {
-          await widget.window?.setAsFrameless();
-          await widget.window?.setPreventClose(true);
-        })
-        .then((_) async {
-          if (visible) {
-            await show();
-          } else {
-            await hide();
-          }
-        });
-  }
-
-  Future<void> show() async {
-    await widget.window?.show();
-    // It's often a good idea to also focus the window when showing it
-    await widget.window?.focus();
-    log('Window shown and focused');
-  }
-
-  Future<void> hide() async {
-    await widget.window?.hide();
-    log('Window hidden');
-  }
 
   void _loadCurrentConfig() async {
     final config = await _configService.loadConfig();
