@@ -14,7 +14,19 @@ Size configScreenSize = Size(800, 600);
 Menu contextMenu = Menu();
 
 SystemTray systemTray = SystemTray();
-
+WindowOptions applicationWindowOptions() {
+  return WindowOptions(
+    titleBarStyle: TitleBarStyle.hidden,
+    windowButtonVisibility: false,
+    size: configScreenSize,
+    center: true,
+    alwaysOnTop: false,
+    fullScreen: false,
+    backgroundColor: Colors.transparent,
+    skipTaskbar: true,
+    title: 'MGR Mobilx PBX?',
+  );
+}
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -39,24 +51,35 @@ void main(List<String> args) async {
     runApp(
       mgrPbxApp(), // Program entrypoint.
     );
+    await WindowManagerPlus.current.waitUntilReadyToShow(
+      applicationWindowOptions(),
+      () async {
+        await WindowManagerPlus.current.setAsFrameless();
+        await WindowManagerPlus.current.setTitle('MGR Mobilx PBX!');
+        await WindowManagerPlus.current.setPreventClose(true);
+      },
+    );
     log('mainapp received window id: ${WindowManagerPlus.current.id}');
   });
 }
 
+
+
 FluentApp mgrPbxApp() {
   return FluentApp(
-      title: 'MGR Mobilx PBX',
-      theme: FluentThemeData(
-        brightness: Brightness.dark,
-        accentColor: Colors.purple,
-      ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => constructLoginLogic(ConfigScreen()),
-        '/config': (context) => ConfigScreen(),
-        '/register': (context) => RegisterScreen(onSuccess: (user) {}),
-      },
-    );
+    title: 'MGR Mobilx PBX',
+    theme: FluentThemeData(
+      brightness: Brightness.dark,
+      accentColor: Colors.purple,
+    ),
+    initialRoute: '/login',
+    routes: {
+      '/login': (context) => constructLoginLogic(ConfigScreen()),
+      '/config': (context) => ConfigScreen(),
+      '/register': (context) => RegisterScreen(onSuccess: (user) {}),
+    },
+    debugShowCheckedModeBanner: false,
+  );
 }
 
 MenuItemBase settingsMenu = MenuItemLabel(
