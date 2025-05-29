@@ -21,12 +21,7 @@ class LoginScreen extends StatefulWidget {
   final void Function(User user) onSuccess;
   final String title;
 
-  const LoginScreen({
-    super.key,
-    required this.onSuccess,
-    this.title = '',
-  });
-
+  const LoginScreen({super.key, required this.onSuccess, this.title = ''});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -118,21 +113,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 loading
                     ? const ProgressRing()
                     : Column(
-                  // Wrap buttons in a Column
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    FilledButton(
-                      onPressed: loginUser, // Updated to loginUser
-                      child: const Text('Login'),
+                      // Wrap buttons in a Column
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        FilledButton(
+                          onPressed: loginUser, // Updated to loginUser
+                          child: const Text('Login'),
+                        ),
+                        const SizedBox(height: 12),
+                        Button(
+                          // Changed to a regular Button for secondary action
+                          onPressed: navigateToRegisterScreen,
+                          child: const Text('Create Account'),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Button(
-                      // Changed to a regular Button for secondary action
-                      onPressed: navigateToRegisterScreen,
-                      child: const Text('Create Account'),
-                    ),
-                  ],
-                ),
               ],
             ),
           ),
@@ -141,7 +136,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
 
 class RegisterScreen extends StatefulWidget {
   final void Function(User user) onSuccess;
@@ -194,140 +188,83 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
-    return Container(decoration: BoxDecoration(gradient: LinearGradient(
-      begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [
-      Color(0xFF9333EA), // purple-600
-      Color(0xFF2563EB), // blue-600
-      Color(0xFFEC4899), // pink-600
-    ],)), child: NavigationView(
-      appBar: NavigationAppBar(
-        leading: IconButton(
-          icon: const Icon(FluentIcons.back),
-          onPressed: () => Navigator.pop(context, '/login'),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF9333EA), // purple-600
+            Color(0xFF2563EB), // blue-600
+            Color(0xFFEC4899), // pink-600
+          ],
         ),
-        title: const Text('Register'),
       ),
-      content: ScaffoldPage(
-        header: const PageHeader(title: Text('Create New Account')),
-        content: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 300),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                InfoLabel(
-                  label: 'Email',
-                  child: TextBox(
-                    controller: emailController,
-                    placeholder: 'you@example.com',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InfoLabel(
-                  label: 'Password',
-                  child: TextBox(
-                    controller: passwordController,
-                    obscureText: true,
-                    placeholder: '••••••••',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InfoLabel(
-                  label: 'Confirm Password',
-                  child: TextBox(
-                    controller: confirmPasswordController,
-                    obscureText: true,
-                    placeholder: '••••••••',
-                  ),
-                ),
-                const SizedBox(height: 20),
-                if (errorText != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: Text(
-                      errorText!,
-                      style: TextStyle(color: Colors.red),
-                      textAlign: TextAlign.center,
+      child: NavigationView(
+        appBar: NavigationAppBar(
+          leading: IconButton(
+            icon: const Icon(FluentIcons.back),
+            onPressed: () => Navigator.pop(context, '/login'),
+          ),
+          title: const Text('Register'),
+        ),
+        content: ScaffoldPage(
+          header: const PageHeader(title: Text('Create New Account')),
+          content: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 300),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  InfoLabel(
+                    label: 'Email',
+                    child: TextBox(
+                      controller: emailController,
+                      placeholder: 'you@example.com',
                     ),
                   ),
-                loading
-                    ? const ProgressRing()
-                    : FilledButton(
-                  onPressed: registerUser,
-                  child: const Text('Register'),
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  InfoLabel(
+                    label: 'Password',
+                    child: TextBox(
+                      controller: passwordController,
+                      obscureText: true,
+                      placeholder: '••••••••',
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  InfoLabel(
+                    label: 'Confirm Password',
+                    child: TextBox(
+                      controller: confirmPasswordController,
+                      obscureText: true,
+                      placeholder: '••••••••',
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (errorText != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: Text(
+                        errorText!,
+                        style: TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  loading
+                      ? const ProgressRing()
+                      : FilledButton(
+                        onPressed: registerUser,
+                        child: const Text('Register'),
+                      ),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    );
-        NavigationView(
-        appBar: NavigationAppBar(
-        leading: IconButton(
-        icon: const Icon(FluentIcons.back),
-    onPressed: () => Navigator.pop(context, '/login'),
-    ),
-    title: const Text('Register'),
-    ),
-    content: ScaffoldPage(
-    header: const PageHeader(title: Text('Create New Account')),
-    content: Center(
-    child: ConstrainedBox(
-    constraints: const BoxConstraints(maxWidth: 300),
-    child: Column(
-    mainAxisAlignment: MainAxisAlignment.center,
-    children: [
-    InfoLabel(
-    label: 'Email',
-    child: TextBox(
-    controller: emailController,
-    placeholder: 'you@example.com',
-    ),
-    ),
-    const SizedBox(height: 12),
-    InfoLabel(
-    label: 'Password',
-    child: TextBox(
-    controller: passwordController,
-    obscureText: true,
-    placeholder: '••••••••',
-    ),
-    ),
-    const SizedBox(height: 12),
-    InfoLabel(
-    label: 'Confirm Password',
-    child: TextBox(
-    controller: confirmPasswordController,
-    obscureText: true,
-    placeholder: '••••••••',
-    ),
-    ),
-    const SizedBox(height: 20),
-    if (errorText != null)
-    Padding(
-    padding: const EdgeInsets.only(bottom: 10),
-    child: Text(
-    errorText!,
-    style: TextStyle(color: Colors.red),
-    textAlign: TextAlign.center,
-    ),
-    ),
-    loading
-    ? const ProgressRing()
-        : FilledButton(
-    onPressed: registerUser,
-    child: const Text('Register'),
-    ),
-    ],
-    ),
-    ),
-    ),
-    )
-    ,
     );
   }
 }
