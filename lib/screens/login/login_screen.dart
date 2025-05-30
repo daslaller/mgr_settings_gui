@@ -1,5 +1,9 @@
+import 'dart:developer';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+
+import 'main_screen.dart';
 
 StreamBuilder<User?> constructLoginLogic(Widget mainScreen) {
   return StreamBuilder<User?>(
@@ -7,14 +11,51 @@ StreamBuilder<User?> constructLoginLogic(Widget mainScreen) {
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: ProgressRing());
-      }
-      if (snapshot.hasData) {
-        return mainScreen;
       } else {
-        return LoginScreen(onSuccess: (user) {});
+        log('Current user: ${snapshot.data?.email ?? 'None'}');
+        log('Connection state: ${snapshot.connectionState}');
+        log('Working with snapshot data: $snapshot');
+      }
+
+      if (snapshot.hasData) {
+        return MainScreen(user: snapshot.data, mainScreen: mainScreen);
+      } else {
+        return LoginScreen(onSuccess: (user) {
+          log('User logged in: ${user.email}');
+           // Also add a somewhere on succes to display a infobar success message
+        });
       }
     },
   );
+}
+
+class MainScreen extends StatelessWidget {
+  late User? user = FirebaseAuth.instance.currentUser;
+  final Widget mainScreen;
+
+  MainScreen({super.key, this.user, required this.mainScreen});
+
+  @override
+  build(BuildContext context) {
+    return NavigationView(
+      content: ScaffoldPage(
+        header: PageHeader(
+          title: Text('Welcome, ${user?.email ?? 'Unknown User'}'),
+          commandBar: Row(
+            children: [
+              FilledButton(
+                child: const Text('Sign Out'),
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                },
+              ),
+            ],
+          ),
+        ),
+        content: Center(child: mainScreen),
+      ),
+    );
+  }
 }
 
 class LoginScreen extends StatefulWidget {
@@ -68,6 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.push(
       context,
       FluentPageRoute(
+        // Go to RegisterScreen when "Create Account" is pressed and pass onSuccess callback
         builder: (context) => RegisterScreen(onSuccess: widget.onSuccess),
       ),
     );

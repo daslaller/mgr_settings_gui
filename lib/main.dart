@@ -4,16 +4,18 @@ import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:mgr_settings_gui/screens/config_screen.dart';
-import 'package:mgr_settings_gui/screens/login_screen.dart';
+import 'package:mgr_settings_gui/screens/login/login_screen.dart';
+import 'package:mgr_settings_gui/screens/login/main_screen.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 
 import 'firebase_options.dart';
 
-Size configScreenSize = Size(800, 600);
+Size configScreenSize = Size(1280, 768);
 Menu contextMenu = Menu();
 
 SystemTray systemTray = SystemTray();
+
 WindowOptions applicationWindowOptions() {
   return WindowOptions(
     titleBarStyle: TitleBarStyle.hidden,
@@ -27,6 +29,7 @@ WindowOptions applicationWindowOptions() {
     title: 'MGR Mobilx PBX?',
   );
 }
+
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
@@ -48,22 +51,40 @@ void main(List<String> args) async {
       systemTray.setContextMenu(contextMenu);
       contextMenu.buildFrom([settingsMenu, exitMenu]);
     });
-    runApp(
-      mgrPbxApp(), // Program entrypoint.
-    );
-    await WindowManagerPlus.current.waitUntilReadyToShow(
-      applicationWindowOptions(),
-      () async {
-        await WindowManagerPlus.current.setAsFrameless();
-        await WindowManagerPlus.current.setTitle('MGR Mobilx PBX!');
-        await WindowManagerPlus.current.setPreventClose(true);
-      },
-    );
+    Future.wait([
+      Future.delayed(Duration(), () async {
+        runApp(
+          Center(
+            child: Image(
+              image: NetworkImage(
+                'https://assets.softr-files.com/applications/6295c80c-d68e-4af5-8b8c-3f3b22af7816/assets/4f0c29eb-89b7-4783-95ba-c06286d03481.png',
+              ),
+            ),
+          ),
+        );
+      }),
+      Future.delayed(Duration(), () async {
+        await WindowManagerPlus.current.waitUntilReadyToShow(
+          applicationWindowOptions(),
+          () async {
+            await WindowManagerPlus.current.setAsFrameless();
+            await WindowManagerPlus.current.setTitle('MGR Mobilx PBX!');
+            await WindowManagerPlus.current.setPreventClose(true);
+            await WindowManagerPlus.current.show();
+          },
+        );
+      }),
+      Future.delayed(
+        Duration(seconds: 2),
+        () => runApp(
+          mgrPbxApp(), // Program entrypoint.
+        ),
+      ),
+    ]);
+
     log('mainapp received window id: ${WindowManagerPlus.current.id}');
   });
 }
-
-
 
 FluentApp mgrPbxApp() {
   return FluentApp(
@@ -73,11 +94,7 @@ FluentApp mgrPbxApp() {
       accentColor: Colors.purple,
     ),
     initialRoute: '/login',
-    routes: {
-      '/login': (context) => constructLoginLogic(ConfigScreen()),
-      '/config': (context) => ConfigScreen(),
-      '/register': (context) => RegisterScreen(onSuccess: (user) {}),
-    },
+    routes: {'/login': (context) => constructLoginLogic(ConfigScreen())},
     debugShowCheckedModeBanner: false,
   );
 }
