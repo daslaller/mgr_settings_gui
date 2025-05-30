@@ -3,7 +3,6 @@ import 'dart:developer';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-import 'main_screen.dart';
 
 StreamBuilder<User?> constructLoginLogic(Widget mainScreen) {
   return StreamBuilder<User?>(

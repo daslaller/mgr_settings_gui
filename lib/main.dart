@@ -5,7 +5,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:mgr_settings_gui/screens/config_screen.dart';
 import 'package:mgr_settings_gui/screens/login/login_screen.dart';
-import 'package:mgr_settings_gui/screens/login/main_screen.dart';
 import 'package:system_tray/system_tray.dart';
 import 'package:window_manager_plus/window_manager_plus.dart';
 
