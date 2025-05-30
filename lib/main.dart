@@ -30,17 +30,54 @@ WindowOptions applicationWindowOptions() {
 }
 
 void main(List<String> args) async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  log('Starting application debug/sample/standalone application...');
-  WidgetsFlutterBinding.ensureInitialized();
-  log('working with args: $args');
+  try {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    log('Starting application debug/sample/standalone application...');
+    log('working with args: $args');
+    await WindowManagerPlus.ensureInitialized(
+      int.parse(args.firstOrNull ?? '0'),
+    ).then((_) async {
+      Future.wait([
+        Future.delayed(Duration(), () async {
+          runApp(
+            Center(
+              child: Image(
+                image: NetworkImage(
+                  'https://assets.softr-files.com/applications/6295c80c-d68e-4af5-8b8c-3f3b22af7816/assets/4f0c29eb-89b7-4783-95ba-c06286d03481.png',
+                ),
+              ),
+            ),
+          );
+        }),
+        Future.delayed(Duration(), () async {
+          await WindowManagerPlus.current.waitUntilReadyToShow(
+            applicationWindowOptions(),
+            () async {
+              await WindowManagerPlus.current.setAsFrameless();
+              await WindowManagerPlus.current.setTitle('MGR Mobilx PBX!');
+              await WindowManagerPlus.current.setPreventClose(true);
+              await WindowManagerPlus.current.show();
+            },
+          );
+        }),
+        Future.delayed(
+          Duration(seconds: 2),
+          () => runApp(
+            mgrPbxApp(), // Program entrypoint.
+          ),
+        ),
+      ]);
 
-  await WindowManagerPlus.ensureInitialized(
-    int.parse(args.firstOrNull ?? '0'),
-  ).then((_) async {
+      log('mainapp received window id: ${WindowManagerPlus.current.id}');
+    });
+  } on Exception catch (e) {
+    log('mainapp failed to initialize: $e');
+  } finally {
     await systemTray.initSystemTray(
-      title: "system tray",
+      title: ('System Tray'),
       iconPath: 'assets/app_icon.ico',
     );
     systemTray.registerSystemTrayEventHandler((eventName) {
@@ -50,39 +87,7 @@ void main(List<String> args) async {
       systemTray.setContextMenu(contextMenu);
       contextMenu.buildFrom([settingsMenu, exitMenu]);
     });
-    Future.wait([
-      Future.delayed(Duration(), () async {
-        runApp(
-          Center(
-            child: Image(
-              image: NetworkImage(
-                'https://assets.softr-files.com/applications/6295c80c-d68e-4af5-8b8c-3f3b22af7816/assets/4f0c29eb-89b7-4783-95ba-c06286d03481.png',
-              ),
-            ),
-          ),
-        );
-      }),
-      Future.delayed(Duration(), () async {
-        await WindowManagerPlus.current.waitUntilReadyToShow(
-          applicationWindowOptions(),
-          () async {
-            await WindowManagerPlus.current.setAsFrameless();
-            await WindowManagerPlus.current.setTitle('MGR Mobilx PBX!');
-            await WindowManagerPlus.current.setPreventClose(true);
-            await WindowManagerPlus.current.show();
-          },
-        );
-      }),
-      Future.delayed(
-        Duration(seconds: 2),
-        () => runApp(
-          mgrPbxApp(), // Program entrypoint.
-        ),
-      ),
-    ]);
-
-    log('mainapp received window id: ${WindowManagerPlus.current.id}');
-  });
+  }
 }
 
 FluentApp mgrPbxApp() {
