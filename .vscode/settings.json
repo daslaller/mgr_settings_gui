@@ -19,5 +19,7 @@
         "[Copilot Theme - Higher Contrast]": {
             "activityBar.background": "#1692fe"
         },
-    }
+    },
+    "IDX.aI.enableInlineCompletion": true,
+    "IDX.aI.enableCodebaseIndexing": true
 }
