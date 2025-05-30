@@ -9,21 +9,16 @@ import 'package:path/path.dart' as path;
 
 // Only for testing and displaying the actual config window design
 Future<void> main(List<String> args) async {
-  if(kDebugMode == true){
-  log('Starting application debug/sample/standalone application...');
-  WidgetsFlutterBinding.ensureInitialized();
-  runApp(ConfigScreen());
+  if (kDebugMode == true) {
+    log('Starting application debug/sample/standalone application...');
+    WidgetsFlutterBinding.ensureInitialized();
+    runApp(ConfigScreen());
   }
   throw Exception('Not a standalone application');
-
 }
 
-
 class ConfigScreen extends StatefulWidget {
-
-  const ConfigScreen({
-    super.key,
-  });
+  const ConfigScreen({super.key});
 
   @override
   ConfigScreenState createState() => ConfigScreenState();
@@ -69,7 +64,6 @@ class ConfigScreenState extends State<ConfigScreen> {
     _mgrResourceIdController.dispose();
     super.dispose();
   }
-
 
   void _loadCurrentConfig() async {
     final config = await _configService.loadConfig();
