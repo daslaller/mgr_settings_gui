@@ -2,7 +2,7 @@ import 'dart:developer';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-
+import 'package:window_manager_plus/window_manager_plus.dart';
 
 StreamBuilder<User?> constructLoginLogic(Widget mainScreen) {
   return StreamBuilder<User?>(
@@ -19,10 +19,12 @@ StreamBuilder<User?> constructLoginLogic(Widget mainScreen) {
       if (snapshot.hasData) {
         return MainScreen(user: snapshot.data, mainScreen: mainScreen);
       } else {
-        return LoginScreen(onSuccess: (user) {
-          log('User logged in: ${user.email}');
-           // Also add a somewhere on succes to display a infobar success message
-        });
+        return LoginScreen(
+          onSuccess: (user) {
+            log('User logged in: ${user.email}');
+            // Also add a somewhere on succes to display a infobar success message
+          },
+        );
       }
     },
   );
@@ -118,7 +120,16 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     return NavigationView(
       content: ScaffoldPage(
-        header: PageHeader(title: Text(widget.title)),
+        header: PageHeader(
+          title: Text(widget.title),
+          commandBar: IconButton(
+            icon: const Icon(FluentIcons.cancel),
+            onPressed: () async {
+              await WindowManagerPlus.current.hide();
+            },
+            style: ButtonStyle(padding: ButtonState.all(EdgeInsets.all(8))),
+          ),
+        ),
         content: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 300),
@@ -252,7 +263,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
           title: const Text('Register'),
         ),
         content: ScaffoldPage(
-          header: const PageHeader(title: Text('Create New Account')),
+          header: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const PageHeader(title: Text('Create New Account')),
+              IconButton(
+                icon: const Icon(FluentIcons.cancel),
+                onPressed: () async {
+                  await WindowManagerPlus.current.hide();
+                },
+                style: ButtonStyle(padding: ButtonState.all(EdgeInsets.all(8))),
+              ),
+            ],
+          ),
           content: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 300),

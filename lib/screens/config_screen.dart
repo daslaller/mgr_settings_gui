@@ -6,6 +6,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide Colors;
 import 'package:flutter/foundation.dart';
 import 'package:mgr_settings_gui/mygadgetrepairs_cli.dart';
 import 'package:path/path.dart' as path;
+import 'package:window_manager_plus/window_manager_plus.dart';
 
 // Only for testing and displaying the actual config window design
 Future<void> main(List<String> args) async {
@@ -136,13 +137,27 @@ class ConfigScreenState extends State<ConfigScreen> {
   Widget build(BuildContext context) {
     return ScaffoldPage(
       header: PageHeader(
-        title: const Text('Application Configuration'), // Kept original title
-        commandBar: CommandBar(
-          primaryItems: [
-            CommandBarButton(
-              icon: const Icon(FluentIcons.save),
-              label: const Text('Save All Configuration'),
-              onPressed: _saveConfig,
+        title: const Text('Application Configuration'),
+        commandBar: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            CommandBar(
+              primaryItems: [
+                CommandBarButton(
+                  icon: const Icon(FluentIcons.save),
+                  label: const Text('Save All Configuration'),
+                  onPressed: _saveConfig,
+                ),
+              ],
+            ),
+            IconButton(
+              icon: const Icon(FluentIcons.cancel),
+              onPressed: () async {
+                await WindowManagerPlus.current.hide();
+              },
+              style: ButtonStyle(
+                padding: WidgetStateProperty.all(EdgeInsets.all(8)),
+              ),
             ),
           ],
         ),
